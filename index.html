@@ -672,6 +672,9 @@
       timeUpTitle:   "Tempo scaduto!",
       timeUpMsg:     "T'è restà imbambolà, vecio. Vediamo cossa ti sei portà a casa.",
       timeUpOverlay: "TEMPO SCADUTO!",
+      // Messaggio nel box spiegazione quando scade il tempo di una domanda.
+      // Diverso da feedbackWrong: l'utente no gà sbaglià, no gà risposto.
+      timeUpFeedback: "⏱ Tempo scaduto! Te si restà imbamboeà, vecio. Vien qua che te spiego!",
       feedbackCorrect: [
         "Bravo, vecio! Risposta giusta.",
         "Varda che testa! Centro pieno.",
@@ -2279,7 +2282,19 @@
     state.lastQuestionBonus = 0;
 
     pauseTimer();
-    showExplanation(false, q.spiegazione);
+
+    // Overlay drammatico "TEMPO SCADUTO!", poi la spiegazione.
+    // El quiz NO se ferma: dopo la spiegazione se va avanti normale.
+    showTimeoutOverlay();
+    setTimeout(() => {
+      const overlay = document.getElementById('timeout-overlay');
+      if (overlay) {
+        overlay.style.transition = 'opacity 0.7s ease';
+        overlay.style.opacity = '0';
+        setTimeout(() => overlay.remove(), 700);
+      }
+      showExplanation(false, q.spiegazione, contentConfig.quiz.timeUpFeedback);
+    }, 1000);
   }
 
   function updateTimerUI() {
@@ -2467,10 +2482,13 @@
     showExplanation(isCorrect, q.spiegazione);
   }
 
-  function showExplanation(isCorrect, spiegazione) {
+  function showExplanation(isCorrect, spiegazione, customReaction) {
     const c = contentConfig.quiz;
+    // customReaction: usato dal timeout. In quel caso el messaggio gà già
+    // la sua icona (⏱) e no va messa la ✕ da risposta sbagliata.
     const reactions = isCorrect ? c.feedbackCorrect : c.feedbackWrong;
-    const reaction  = reactions[Math.floor(Math.random() * reactions.length)];
+    const reaction  = customReaction || reactions[Math.floor(Math.random() * reactions.length)];
+    const prefix    = customReaction ? '' : (isCorrect ? '✓ ' : '✕ ');
     const isLast    = state.currentIdx >= state.questions.length - 1;
 
     // Determino il testo del bottone:
@@ -2491,7 +2509,7 @@
     $explain.innerHTML = `
       <div class="explain-box animate-explain-in">
         <p class="eyebrow mb-2">
-          ${isCorrect ? '✓ ' : '✕ '}${reaction}
+          ${prefix}${reaction}
         </p>
         <p class="text-sm text-sveja-ink leading-relaxed mb-5">${spiegazione}</p>
         <button id="btn-next" class="btn-primary w-full font-bold tracking-wider">
