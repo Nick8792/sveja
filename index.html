@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-  <meta name="description" content="Sveja! — Tre prove, sessanta secondi. Il quiz d'intuito alla veneta." />
+  <meta name="description" content="Sveja! — Ogni giorno una cosa della tua terra. Che tu la sappia o la scopra, sei dei nostri." />
   <meta name="theme-color" content="#0a0a0a" />
   <title>Sveja! — Quiz Veneto</title>
 
@@ -619,7 +619,7 @@
         },
         {
           eyebrow:  "Come si gioca",
-          title:    "Tre domande in trenta secondi.",
+          title:    "Tre domande, quindici secondi l'una.",
           subtitle: "",
           body:     "Risposte giuste = punti. Pi te sì svelto, pi bonus te porti casa, fino a cento. Una sola partita al giorno: a sveja sona ae 07:00.",
         },
@@ -635,7 +635,7 @@
     intro: {
       eyebrow: "Quiz Veneto · Edizione del giorno",
       rules: [
-        "Tre domande in trenta secondi. Il tempo è galantuomo, ma de poche paroe.",
+        "Tre domande, quindici secondi par una. Il tempo è galantuomo, ma de poche paroe.",
         "Venticinque punti a risposta giusta. Pi te si svelto, pi bonus te porti casa — fino a cento.",
         "Una partita al giorno. Chi tiene duro più giorni di fila, qualcosa de bon lo trova.",
       ],
@@ -1486,9 +1486,9 @@
     questions:    [],               // domande del giorno
     currentIdx:   0,
     correctCount: 0,
-    totalSeconds: 30,               // timer globale 30s (ricalibrato per ritmo adrenalinico)
+    secondsPerQuestion: 15,         // timer PER SINGOLA DOMANDA (15s ciascuna)
     graceSeconds: 7,                // periodo di grazia per domanda (bonus pieno)
-    remaining:    30,
+    remaining:    15,
     startTime:    0,                // ms — inizio quiz
     questionStartTime: 0,           // ms — inizio domanda corrente
     timerId:      null,
@@ -2190,7 +2190,7 @@
     state.questions    = todayQuiz.questions.map(shuffleQuestionOptions);
     state.currentIdx   = 0;
     state.correctCount = 0;
-    state.remaining    = state.totalSeconds;
+    state.remaining    = state.secondsPerQuestion;
     state.startTime    = Date.now();
     state.questionStartTime = Date.now();   // timestamp inizio prima domanda
     state.speedBonus   = 0;                 // accumulatore bonus velocità
@@ -2239,32 +2239,47 @@
     if (state.timerId) clearInterval(state.timerId);
     state.timerId = setInterval(() => {
       if (state.awaitingNext) return;
-      const elapsed = (Date.now() - state.startTime - pauseAccum) / 1000;
-      state.remaining = Math.max(0, state.totalSeconds - elapsed);
+      // Il countdown è PER DOMANDA: parte da questionStartTime, non
+      // dall'inizio del quiz. Una domanda lenta costa solo se stessa,
+      // non mangia il tempo delle altre.
+      const elapsed = (Date.now() - state.questionStartTime - pauseAccum) / 1000;
+      state.remaining = Math.max(0, state.secondsPerQuestion - elapsed);
       updateTimerUI();
       if (state.remaining <= 0) {
         clearInterval(state.timerId);
         state.timerId = null;
-        // Anche con timeout, la domenica passiamo dal proverbio.
-        // Mostriamo l'overlay drammatico, poi entriamo nel bonus
-        // invece di andare ai risultati.
-        if (isSundayBonusActive()) {
-          finalizeQuiz(true);
-          showTimeoutOverlay();
-          setTimeout(() => {
-            const overlay = document.getElementById('timeout-overlay');
-            if (overlay) {
-              overlay.style.transition = 'opacity 0.7s ease';
-              overlay.style.opacity = '0';
-              setTimeout(() => overlay.remove(), 700);
-            }
-            enterSundayBonus();
-          }, 1000);
-        } else {
-          endQuiz(true);
-        }
+        handleQuestionTimeout();
       }
     }, 100);
+  }
+
+  // ============================================================
+  // handleQuestionTimeout — tempo scaduto sulla SINGOLA domanda
+  // ----------------------------------------------------------------
+  // Scelta di design (opzione A): la domanda conta come sbagliata,
+  // MA la spiegazione viene mostrata lo stesso. La spiegazione xé el
+  // vero contenuto culturale: negarla proprio a chi non sapeva la
+  // risposta vorrebbe dire punire chi gà più da imparare.
+  // Dopo la spiegazione se va avanti normalmente; el quiz NO se
+  // chiude più per timeout.
+  // ============================================================
+  function handleQuestionTimeout() {
+    if (state.awaitingNext) return;
+    const q = state.questions[state.currentIdx];
+
+    // Disabilito le risposte ed evidenzio quella corretta
+    document.querySelectorAll('#answers .answer-btn').forEach(b => {
+      b.disabled = true;
+      b.classList.add('is-disabled');
+    });
+    const correctBtn = document.querySelector(`#answers .answer-btn[data-idx="${q.risposta_corretta}"]`);
+    if (correctBtn) correctBtn.classList.add('is-correct');
+
+    // Nessun punto, nessun bonus per questa domanda
+    state.lastQuestionBonus = 0;
+
+    pauseTimer();
+    showExplanation(false, q.spiegazione);
   }
 
   function updateTimerUI() {
@@ -2272,36 +2287,38 @@
     const display = document.getElementById('timer-display');
     if (!fill || !display) return;
 
-    const pct = (state.remaining / state.totalSeconds) * 100;
+    const pct = (state.remaining / state.secondsPerQuestion) * 100;
     fill.style.width = pct + '%';
 
-    // Soglie colore basate sui SECONDI assoluti:
-    //   > 20s        : verde
-    //   20 → 10s     : arancione
-    //   < 10s        : rosso + pulse (urgenza visiva)
+    // Soglie colore allineate alla CURVA DEL BONUS (finestra 15s):
+    //   > 8s rimasti  (0-7s trascorsi)  : verde     → bonus PIENO
+    //   8 → 4s        (7-11s trascorsi) : arancione → bonus che cala
+    //   < 4s          (11-15s)          : rosso + pulse → bonus quasi zero
+    // Così el colore dice la verità: verde = te sì a posto,
+    // arancione = te stè perdendo punti, rosso = corri.
     let color;
-    if (state.remaining > 20)      color = '#4ade80'; // verde
-    else if (state.remaining > 10) color = '#f97316'; // arancione
+    if (state.remaining > 8)       color = '#4ade80'; // verde
+    else if (state.remaining > 4)  color = '#f97316'; // arancione
     else                           color = '#dc2626'; // rosso
     fill.style.setProperty('--timer-color', color);
 
-    // Pulse di urgenza sotto i 10 secondi
-    if (state.remaining <= 10) fill.classList.add('timer-urgent');
+    // Pulse di urgenza negli ultimi 4 secondi
+    if (state.remaining <= 4) fill.classList.add('timer-urgent');
     else fill.classList.remove('timer-urgent');
 
     display.textContent = Math.ceil(state.remaining);
 
-    // Anche il numero diventa rosso urgente sotto i 10s, per coerenza visiva
-    if (state.remaining <= 10) display.classList.add('text-feedback-wrong', 'font-bold');
+    // Anche il numero diventa rosso urgente sotto i 4s, per coerenza visiva
+    if (state.remaining <= 4) display.classList.add('text-feedback-wrong', 'font-bold');
     else display.classList.remove('text-feedback-wrong', 'font-bold');
   }
 
   // ============================================================
   // useBonus — applica l'effetto del bonus in base al livello
   // ----------------------------------------------------------------
-  // L1 (Fiato):     +5 secondi al timer globale (anche se in pausa,
+  // L1 (Fiato):     +5 secondi sulla domanda corrente (anche se in pausa,
   //                 verrà applicato correttamente perché modifichiamo
-  //                 totalSeconds + il timestamp iniziale)
+  //                 l'accumulo di pausa, non la durata base)
   // L2 (Ocio Furbo): elimina una risposta sbagliata della domanda corrente
   //
   // Vincoli:
@@ -2321,12 +2338,12 @@
       // Aggiungo 5 secondi al timer. Tecnicamente lo faccio aumentando
       // pauseAccum di 5 secondi: questo ha l'effetto di "regalare" 5s
       // al calcolo elapsed, indipendentemente dal fatto che il timer
-      // sia in pausa o no. È più robusto di toccare totalSeconds (che
-      // influenzerebbe anche le soglie colore in modo strano).
+      // sia in pausa o no. È più robusto di toccare secondsPerQuestion
+      // (che influenzerebbe anche le soglie colore in modo strano).
       pauseAccum += 5000;
       // Aggiorno subito il display
-      const elapsed = (Date.now() - state.startTime - pauseAccum) / 1000;
-      state.remaining = Math.max(0, state.totalSeconds - elapsed);
+      const elapsed = (Date.now() - state.questionStartTime - pauseAccum) / 1000;
+      state.remaining = Math.max(0, state.secondsPerQuestion - elapsed);
       updateTimerUI();
 
       showToast(cb.level1.toast, 'fiato');
@@ -2503,14 +2520,19 @@
         endQuiz(false);
       }
     } else {
-      // Resetto il cronometro della singola domanda — riparte il periodo di grazia
+      // Nuova domanda = timer NUOVO. Il cronometro riparte pieno:
+      // azzero l'accumulo di pausa e reimposto remaining al massimo,
+      // così ogni domanda gà i suoi 15 secondi puliti.
       state.questionStartTime = Date.now();
-      // ri-render della prossima domanda mantenendo timer attivo
-      const remainingPct = (state.remaining / state.totalSeconds) * 100;
+      pauseAccum = 0;
+      pauseStart = 0;
+      state.remaining = state.secondsPerQuestion;
       renderQuiz();
-      // forzo la barra al valore corretto
+      // La barra riparte piena
       const fill = document.getElementById('timer-fill');
-      if (fill) fill.style.width = remainingPct + '%';
+      if (fill) fill.style.width = '100%';
+      // Se il timer era stato fermato da un timeout, lo riavvio
+      if (!state.timerId) startTimer();
     }
   }
 
@@ -2549,7 +2571,7 @@
     state.finalTitolo = computeTitolo(total);
     state.wasTimeout  = !!timeUp;
     // Social proof: percentuale di ranking simulata
-    state.finalRank   = calculateRankPercentage(total, timeUp ? 0 : state.remaining);
+    state.finalRank   = calculateRankPercentage(total, state.speedBonus);
 
     // Salva risultato (impedisce di rigiocare oggi)
     storage.saveResult(
@@ -2682,15 +2704,18 @@
   // diversi (es. dopo un refresh o quando condivide), introduciamo
   // un piccolo rumore deterministico basato sulla data + score.
   // ============================================================
-  function calculateRankPercentage(score, timeRemaining) {
+  function calculateRankPercentage(score, speedBonusTotal) {
     let min, max;
     if (score >= 100)      { min = 94; max = 99; }
     else if (score >= 80)  { min = 75; max = 93; }
     else if (score >= 50)  { min = 40; max = 74; }
     else                   { min = 5;  max = 39; }
 
-    // Frazione del tempo rimasto (0..1) — clampata per sicurezza
-    const t = Math.max(0, Math.min(1, timeRemaining / state.totalSeconds));
+    // Col timer per-domanda non esiste più un "tempo totale rimasto":
+    // uso el bonus velocità accumulato (max 25 = 8.333 × 3 domande),
+    // che xé la misura vera de quanto l'utente xé stà svelto.
+    const maxSpeedBonus = (100 / 3 - 25) * 3;
+    const t = Math.max(0, Math.min(1, speedBonusTotal / maxSpeedBonus));
 
     // Posizione base nella fascia: chi è più veloce sale verso il max
     let pct = min + (max - min) * t;
@@ -3378,7 +3403,7 @@
     const manifest = {
       name: "Sveja! — Quiz Veneto",
       short_name: "Sveja!",
-      description: "Tre prove, sessanta secondi. Il quiz d'intuito alla veneta.",
+      description: "Ogni giorno una cosa della tua terra. Che tu la sappia o la scopra, sei dei nostri.",
       start_url: ".",
       display: "standalone",
       orientation: "portrait",
