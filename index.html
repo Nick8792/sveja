@@ -177,6 +177,13 @@
         @apply font-display italic font-semibold text-sveja-gold text-sm uppercase tracking-widest-2;
       }
 
+      /* Variante "hero": par i occhielli che regge el concetto de la
+         schermata (Verdetto della piazza, Sei un, Sessione chiusa).
+         Pì grandi e in grassetto, cussì i saltà fora sul serio. */
+      .eyebrow-hero {
+        @apply font-display italic font-bold text-sveja-gold text-base uppercase tracking-widest-2;
+      }
+
       /* Bottone primario */
       .btn-primary {
         @apply bg-rosso-treviso text-sveja-ink font-semibold uppercase
@@ -416,7 +423,8 @@
        non PRIMA della prima → in text-align:center il baricentro si sposta
        a destra. Aggiungo padding-left dello stesso valore per centrare
        otticamente il testo. */
-    .eyebrow {
+    .eyebrow,
+    .eyebrow-hero {
       padding-left: 0.3em !important;
     }
 
@@ -2771,7 +2779,7 @@
 
     $app.innerHTML = `
       <section class="flex flex-col items-center text-center pt-2">
-        <p class="eyebrow mb-2 animate-fade-up">${c.eyebrow}</p>
+        <p class="eyebrow-hero mb-2 animate-fade-up">${c.eyebrow}</p>
 
         <div class="relative my-4">
           <div id="score-ring" class="score-ring w-44 h-44 rounded-full flex items-center justify-center opacity-0 transition-opacity duration-300"
@@ -2788,7 +2796,7 @@
           <span class="text-xs">✦</span>
         </div>
 
-        <p class="eyebrow mb-2 animate-fade-up" style="animation-delay:0.15s">${c.titoloLabel}</p>
+        <p class="eyebrow-hero mb-2 animate-fade-up" style="animation-delay:0.15s">${c.titoloLabel}</p>
         <h2 class="font-display italic text-5xl md:text-6xl mb-4 animate-fade-up"
             style="animation-delay:0.2s">${t.name}</h2>
 
@@ -2906,7 +2914,7 @@
 
     $app.innerHTML = `
       <section class="flex-1 flex flex-col items-center justify-center text-center">
-        <p class="eyebrow mb-3 animate-fade-up">${c.eyebrow}</p>
+        <p class="eyebrow-hero mb-3 animate-fade-up">${c.eyebrow}</p>
 
         <h1 class="logo-sveja text-logo md:text-logo-lg mb-6 animate-fade-up">
           Sveja<span class="logo-bang">!</span>
@@ -2933,7 +2941,7 @@
                style="animation-delay:0.3s">
             <p class="eyebrow mb-2">${c.lastLabel}</p>
             <p class="font-display text-4xl mb-1">${todayResult.score}</p>
-            <p class="font-display italic text-sveja-gold">${todayResult.titoloName}</p>
+            <p class="font-display italic font-semibold text-2xl text-sveja-gold">${todayResult.titoloName}</p>
             ${todayResult.proverbCorrect ? `
               <p class="font-display italic text-sm text-sveja-gold mt-2 pt-2 border-t border-sveja-border/50">
                 ${contentConfig.sundayBonus.badge}
