@@ -168,9 +168,13 @@
         background: linear-gradient(90deg, transparent, #8B0000, transparent);
       }
 
-      /* Eyebrow / numerazione editoriale */
+      /* Eyebrow / numerazione editoriale.
+         Dimensione e peso alzati (text-xs → text-sm, + font-medium) par
+         leggibilità: el Cormorant corsivo maiuscolo in oro, picoeo e
+         sottile, xé fadigoso par chi gà anca solo un fià de problemi de
+         vista. Ingrossar i tratti giova più de qualche pixel in più. */
       .eyebrow {
-        @apply font-display italic text-sveja-gold text-xs uppercase tracking-widest-2;
+        @apply font-display italic font-medium text-sveja-gold text-sm uppercase tracking-widest-2;
       }
 
       /* Bottone primario */
