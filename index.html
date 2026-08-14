@@ -1619,6 +1619,15 @@
     // Body può contenere \n per andare a capo (es. lista bonus della slide 3)
     const bodyHtml = (slide.body || '').replace(/\n/g, '<br>');
 
+    // La slide 1 porta el titolo "Sveja!": ghe damo el tratamento da LOGO
+    // (grande, grassetto, gradiente e bagliore rosso) istesso che nea
+    // homepage, invece del stile de un titolo qualunque. Cussì el brand
+    // el gà lo stesso peso in tuti do i posti.
+    const isLogoSlide = state.onboardingSlide === 0;
+    const titleClass  = isLogoSlide
+      ? 'logo-sveja text-logo md:text-logo-lg'
+      : 'font-display italic text-5xl md:text-6xl';
+
     $app.innerHTML = `
       <section class="flex-1 flex flex-col text-center" data-slide="${state.onboardingSlide}">
 
@@ -1635,7 +1644,7 @@
         <!-- Contenuto centrato verticalmente -->
         <div class="flex-1 flex flex-col items-center justify-center">
           <p class="eyebrow mb-4 ${fadeUp}">${slide.eyebrow}</p>
-          <h2 class="font-display italic text-5xl md:text-6xl mb-4 ${fadeUp}"
+          <h2 class="${titleClass} mb-4 ${fadeUp}"
               style="${delay(0.1)}">${slide.title}</h2>
           ${slide.subtitle ? `
             <p class="font-display italic font-semibold text-xl text-sveja-gold mb-6 ${fadeUp}"
