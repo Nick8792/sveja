@@ -428,6 +428,37 @@
       padding-left: 0.3em !important;
     }
 
+    /* ZONA SICURA IN ALTO
+       Co' l'app xé installà in schermata Home, la pagina ciapa TUTO el
+       schermo, orologio e batteria compresi (status-bar-style xé
+       "black-translucent"). Sensa compensazion, el logo e i bottoni va
+       a finir soto l'orologio.
+       env(safe-area-inset-top) vale 0 nel browser normale e l'altezza
+       de la tacca co' l'app xé installà: cussì na regola soea copre
+       tuti do i casi. */
+    #app {
+      padding-top: calc(2.5rem + env(safe-area-inset-top, 0px));
+    }
+
+    /* Intestazioni appiccicose: le se ferma SOTO la tacca, no soto
+       l'orologio. */
+    header.sticky {
+      top: env(safe-area-inset-top, 0px);
+    }
+
+    /* Striscia fissa che dipinge la zona de l'orologio col colore de
+       l'app: cussì el contenuto che scorre no se vede spuntar de drio.
+       Nel browser normale l'altezza xé 0 e no se vede gnente. */
+    body::before {
+      content: '';
+      position: fixed;
+      top: 0; left: 0; right: 0;
+      height: env(safe-area-inset-top, 0px);
+      background: #0a0a0a;
+      z-index: 50;
+      pointer-events: none;
+    }
+
     /* Box streak nell'intro: piccolo "passport" del progresso utente.
        Fondo card scuro, bordo sottile dorato, testo dorato.
        Font Space Grotesk (font-mono) per i numeri e la label,
