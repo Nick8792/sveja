@@ -707,6 +707,26 @@
       shareButton:   "Sfida i fioi su WhatsApp",
       footer:        "Torna domani per una nuova prova",
       timeoutBanner: "Il tempo xé voeà via, vecio! Potevi far di meglio se non te imbalbavi.",
+      // Avviso mostrato SOLO a chi apre Sveja dal browser interno de
+      // Instagram/Facebook. Lì la memoria xé separada da Safari/Chrome:
+      // la streak no se conserva e l'app no se pol métar in home.
+      browserPrompt: {
+        eyebrow: "Par tegner la to streak",
+        text:    "Te sì drento Instagram, e qua el telefono se desmentega tuto: doman la to streak riparte da zero.",
+        ios:     "Toca i tre puntini in alto a destra → «Apri in Safari».",
+        android: "Toca i tre puntini in alto a destra → «Apri in Chrome».",
+        generico:"Apri Sveja nel browser del telefono: la streak resta.",
+      },
+      // Invito a métar l'app in schermata Home. Mostrà solo a chi xé
+      // GIÀ nel browser vero e no gà ancora installà: xé el passo che
+      // trasforma un link in un rito de tuti i giorni.
+      installPrompt: {
+        eyebrow: "Fa' che deventa un rito",
+        text:    "Zonta Sveja in schermata Home: la trovi ogni matina, come na app vera.",
+        ios:     "Toca «Condividi» in basso → «Aggiungi a Home».",
+        android: "Toca i tre puntini → «Aggiungi a schermata Home».",
+        generico:"Dal menù del browser, scegli «Aggiungi a schermata Home».",
+      },
       // Social proof: {pct} viene sostituito con la percentuale calcolata
       rankLine:      "Sei più sveglio del {pct}% dei trevigiani che hanno giocato oggi!",
       // Teaser di ritorno
@@ -1278,6 +1298,32 @@
   // Index del quiz odierno (0..quizDB.length-1, attualmente 0..13).
   // Usa Unix days (UTC) per garantire sincronia globale: tutti gli
   // utenti vedono la stessa domanda nello stesso giorno solare.
+  // ============================================================
+  // RILEVAMENTO BROWSER INTERNO DEI SOCIAL
+  // ----------------------------------------------------------------
+  // Instagram e Facebook aprono i link in un browser loro, che gà na
+  // memoria SEPARADA da Safari/Chrome. Conseguenza: la streak salvada
+  // lì no se ritrova pì, e l'app no se pol zontar in schermata Home.
+  // Par questi utenti mostremo un avviso coi passi giusti.
+  // ============================================================
+  function isInAppBrowser() {
+    const ua = navigator.userAgent || '';
+    return /Instagram|FBAN|FBAV|FB_IAB|Line\/|Twitter|TikTok/i.test(ua);
+  }
+
+  function sistemaOperativo() {
+    const ua = navigator.userAgent || '';
+    if (/iPhone|iPad|iPod/i.test(ua)) return 'ios';
+    if (/Android/i.test(ua)) return 'android';
+    return 'generico';
+  }
+
+  // Xé za installà in schermata Home? (allora no serve invitarlo)
+  function isInstallata() {
+    return window.matchMedia('(display-mode: standalone)').matches
+        || window.navigator.standalone === true;
+  }
+
   function getTodayQuizIndex() {
     const epoch = Math.floor(Date.now() / 86400000);
     return epoch % quizDB.length;
@@ -2830,6 +2876,30 @@
            style="animation-delay:0.28s; font-weight: 600;">
           ${c.rankLine.replace('{pct}', state.finalRank)}
         </p>
+
+        ${isInAppBrowser() ? `
+          <div class="w-full bg-sveja-gold/10 border-l-2 border-sveja-gold
+                      rounded-sm p-4 mb-6 animate-fade-up"
+               style="animation-delay:0.3s">
+            <p class="eyebrow mb-1">${c.browserPrompt.eyebrow}</p>
+            <p class="text-sm text-sveja-ink leading-relaxed text-left mb-2">${c.browserPrompt.text}</p>
+            <p class="text-sm text-sveja-gold leading-relaxed text-left" style="font-weight:600;">
+              ${c.browserPrompt[sistemaOperativo()]}
+            </p>
+          </div>
+        ` : ''}
+
+        ${(!isInAppBrowser() && !isInstallata() && state.streak <= 5) ? `
+          <div class="w-full bg-sveja-gold/10 border-l-2 border-sveja-gold
+                      rounded-sm p-4 mb-6 animate-fade-up"
+               style="animation-delay:0.3s">
+            <p class="eyebrow mb-1">${c.installPrompt.eyebrow}</p>
+            <p class="text-sm text-sveja-ink leading-relaxed text-left mb-2">${c.installPrompt.text}</p>
+            <p class="text-sm text-sveja-gold leading-relaxed text-left" style="font-weight:600;">
+              ${c.installPrompt[sistemaOperativo()]}
+            </p>
+          </div>
+        ` : ''}
 
         ${state.wasTimeout ? `
           <div class="w-full bg-rosso-treviso/10 border-l-2 border-rosso-treviso
